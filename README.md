@@ -21,70 +21,54 @@ STEP-5: Display the obtained cipher text.
 #include <string.h>
 #include <ctype.h>
 
-void toLowerCase(char *text) {
-    for (int i = 0; text[i]; i++) {
-        text[i] = tolower(text[i]);
-    }
-}
+#define SIZE 5
 
-void removeSpaces(char *text) {
-    int count = 0;
-    for (int i = 0; text[i]; i++) {
-        if (text[i] != ' ') {
-            text[count++] = text[i];
-        }
-    }
-    text[count] = '\0';
-}
+char keyMatrix[SIZE][SIZE];
 
-void diagraph(char *text, char digraphs[][2]) {
-    int i = 0, k = 0;
-    while (text[i] != '\0') {
-        digraphs[k][0] = text[i];
-        if (text[i + 1] == '\0' || text[i] == text[i + 1]) {
-            digraphs[k][1] = 'x';
-            i++;
-        } else {
-            digraphs[k][1] = text[i + 1];
-            i += 2;
-        }
-        k++;
-    }
-}
-
-void fillerLetter(char *text) {
-    if (strlen(text) % 2 != 0) {
-        strcat(text, "x");
-    }
-}
-
-void generateKeyTable(char *key, char keyTable[5][5], char *list1) {
-    int dict[26] = {0};
-    int k = 0;
-
-    // Fill key letters
-    for (int i = 0; key[i]; i++) {
-        if (key[i] != 'j' && dict[key[i] - 'a'] == 0) {
-            keyTable[k / 5][k % 5] = key[i];
-            dict[key[i] - 'a'] = 1;
-            k++;
-        }
-    }
-
-    // Fill remaining letters
-    for (int i = 0; list1[i]; i++) {
-        if (list1[i] != 'j' && dict[list1[i] - 'a'] == 0) {
-            keyTable[k / 5][k % 5] = list1[i];
-            dict[list1[i] - 'a'] = 1;
-            k++;
+// Function to remove duplicate characters from the keyword
+void removeDuplicates(char *str) {
+    int len = strlen(str);
+    for (int i = 0; i < len; i++) {
+        for (int j = i + 1; j < len;) {
+            if (str[i] == str[j]) {
+                for (int k = j; k < len; k++) {
+                    str[k] = str[k + 1];
+                }
+                len--;
+            } else {
+                j++;
+            }
         }
     }
 }
 
-void search(char keyTable[5][5], char ch, int *row, int *col) {
-    for (int i = 0; i < 5; i++) {
-        for (int j = 0; j < 5; j++) {
-            if (keyTable[i][j] == ch) {
+// Function to generate the key matrix
+void generateKeyMatrix(char *key) {
+    char alphabet[] = "ABCDEFGHIKLMNOPQRSTUVWXYZ"; // I/J combined
+    removeDuplicates(key);
+    strcat(key, alphabet);
+
+    int used[26] = {0}; // Track used characters
+    int x = 0, y = 0;
+    for (int i = 0; i < strlen(key); i++) {
+        if (key[i] == 'J') key[i] = 'I';
+        if (!used[key[i] - 'A']) {
+            keyMatrix[x][y++] = key[i];
+            used[key[i] - 'A'] = 1;
+            if (y == SIZE) {
+                y = 0;
+                x++;
+            }
+        }
+    }
+}
+
+// Function to find character position in the key matrix
+void findPosition(char ch, int *row, int *col) {
+    if (ch == 'J') ch = 'I';  // Treat 'J' as 'I'
+    for (int i = 0; i < SIZE; i++) {
+        for (int j = 0; j < SIZE; j++) {
+            if (keyMatrix[i][j] == ch) {
                 *row = i;
                 *col = j;
                 return;
@@ -93,70 +77,85 @@ void search(char keyTable[5][5], char ch, int *row, int *col) {
     }
 }
 
-void encryptRowRule(char keyTable[5][5], int e1r, int e1c, int e2r, int e2c, char *c1, char *c2) {
-    *c1 = keyTable[e1r][(e1c + 1) % 5];
-    *c2 = keyTable[e2r][(e2c + 1) % 5];
-}
-
-void encryptColumnRule(char keyTable[5][5], int e1r, int e1c, int e2r, int e2c, char *c1, char *c2) {
-    *c1 = keyTable[(e1r + 1) % 5][e1c];
-    *c2 = keyTable[(e2r + 1) % 5][e2c];
-}
-
-void encryptRectangleRule(char keyTable[5][5], int e1r, int e1c, int e2r, int e2c, char *c1, char *c2) {
-    *c1 = keyTable[e1r][e2c];
-    *c2 = keyTable[e2r][e1c];
-}
-
-void encryptByPlayfairCipher(char keyTable[5][5], char digraphs[][2], int size, char *cipherText) {
-    char c1, c2;
-    int e1r, e1c, e2r, e2c;
-    
-    for (int i = 0; i < size; i++) {
-        search(keyTable, digraphs[i][0], &e1r, &e1c);
-        search(keyTable, digraphs[i][1], &e2r, &e2c);
-
-        if (e1r == e2r) {
-            encryptRowRule(keyTable, e1r, e1c, e2r, e2c, &c1, &c2);
-        } else if (e1c == e2c) {
-            encryptColumnRule(keyTable, e1r, e1c, e2r, e2c, &c1, &c2);
-        } else {
-            encryptRectangleRule(keyTable, e1r, e1c, e2r, e2c, &c1, &c2);
+// Encryption function
+void encrypt(char *plaintext, char *ciphertext) {
+    for (int i = 0; i < strlen(plaintext); i += 2) {
+        if (i + 1 == strlen(plaintext) || plaintext[i] == plaintext[i + 1]) {
+            strcat(plaintext, "X");  // Add padding if necessary
         }
+        int row1, col1, row2, col2;
+        findPosition(plaintext[i], &row1, &col1);
+        findPosition(plaintext[i + 1], &row2, &col2);
 
-        cipherText[2 * i] = c1;
-        cipherText[2 * i + 1] = c2;
+        if (row1 == row2) { // Same row
+            ciphertext[i] = keyMatrix[row1][(col1 + 1) % SIZE];
+            ciphertext[i + 1] = keyMatrix[row2][(col2 + 1) % SIZE];
+        } else if (col1 == col2) { // Same column
+            ciphertext[i] = keyMatrix[(row1 + 1) % SIZE][col1];
+            ciphertext[i + 1] = keyMatrix[(row2 + 1) % SIZE][col2];
+        } else { // Rectangle swap
+            ciphertext[i] = keyMatrix[row1][col2];
+            ciphertext[i + 1] = keyMatrix[row2][col1];
+        }
     }
-    cipherText[2 * size] = '\0';
+    ciphertext[strlen(plaintext)] = '\0';
+}
+
+// Decryption function
+void decrypt(char *ciphertext, char *plaintext) {
+    for (int i = 0; i < strlen(ciphertext); i += 2) {
+        int row1, col1, row2, col2;
+        findPosition(ciphertext[i], &row1, &col1);
+        findPosition(ciphertext[i + 1], &row2, &col2);
+
+        if (row1 == row2) { // Same row
+            plaintext[i] = keyMatrix[row1][(col1 - 1 + SIZE) % SIZE];
+            plaintext[i + 1] = keyMatrix[row2][(col2 - 1 + SIZE) % SIZE];
+        } else if (col1 == col2) { // Same column
+            plaintext[i] = keyMatrix[(row1 - 1 + SIZE) % SIZE][col1];
+            plaintext[i + 1] = keyMatrix[(row2 - 1 + SIZE) % SIZE][col2];
+        } else { // Rectangle swap
+            plaintext[i] = keyMatrix[row1][col2];
+            plaintext[i + 1] = keyMatrix[row2][col1];
+        }
+    }
+    plaintext[strlen(ciphertext)] = '\0';
 }
 
 int main() {
-    char text_Plain[] = "instruments";
-    char key[] = "Monarchy";
-    char list1[] = "abcdefghiklmnopqrstuvwxyz";
-    char digraphs[10][2]; // Max size is half the length of text_Plain
-    char keyTable[5][5];
-    char cipherText[20]; // Max length is 2 * length of digraphs
+    char key[] = "MONARCHY";
+    char plaintext[] = "LOKESH";
+    char ciphertext[128];
+    char decryptedtext[128];
 
-    toLowerCase(text_Plain);
-    removeSpaces(text_Plain);
-    fillerLetter(text_Plain);
-    diagraph(text_Plain, digraphs);
+    // Generate the key matrix
+    generateKeyMatrix(key);
 
-    generateKeyTable(key, keyTable, list1);
-    
-    int size = strlen(text_Plain) / 2;
-    encryptByPlayfairCipher(keyTable, digraphs, size, cipherText);
+    // Print the key matrix
+    printf("Key Matrix:\n");
+    for (int i = 0; i < SIZE; i++) {
+        for (int j = 0; j < SIZE; j++) {
+            printf("%c ", keyMatrix[i][j]);
+        }
+        printf("\n");
+    }
 
-    printf("Key text: %s\n", key);
-    printf("Plain Text: %s\n", text_Plain);
-    printf("CipherText: %s\n", cipherText);
+    // Encrypt the plaintext
+    encrypt(plaintext, ciphertext);
+    printf("\nEncrypted text: %s\n", ciphertext);
+
+    // Decrypt the ciphertext
+    decrypt(ciphertext, decryptedtext);
+    printf("Decrypted text: %s\n", decryptedtext);
 
     return 0;
 }
+
 ```
 ## OUTPUT:
-![image](https://github.com/user-attachments/assets/6474f4aa-5342-4881-8d3c-b880f1a0bf21)
+
+![image](https://github.com/user-attachments/assets/be29b6d5-6464-4fc3-a227-511b1d1f5ce7)
+
 
 ## RESULT:
   Thus the Playfair cipher substitution technique had been implemented successfully.
