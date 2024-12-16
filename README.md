@@ -154,7 +154,8 @@ int main() {
 ```
 ## OUTPUT:
 
-![image](https://github.com/user-attachments/assets/be29b6d5-6464-4fc3-a227-511b1d1f5ce7)
+![Screenshot 2024-12-15 065538](https://github.com/user-attachments/assets/73ffb5ca-d148-491a-9927-61ddecde5f40)
+
 
 
 ## RESULT:
